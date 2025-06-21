@@ -1,57 +1,78 @@
-//
-//  Persistence.swift
-//  Report Manager
-//
-//  Created by Rahul choudhary on 20/06/25.
-//
-
 import CoreData
+import FirebaseAuth
 
-struct PersistenceController {
+class PersistenceController {
     static let shared = PersistenceController()
-
-    @MainActor
-    static let preview: PersistenceController = {
-        let result = PersistenceController(inMemory: true)
-        let viewContext = result.container.viewContext
-        for _ in 0..<10 {
-            let newItem = Item(context: viewContext)
-            newItem.timestamp = Date()
-        }
-        do {
-            try viewContext.save()
-        } catch {
-            // Replace this implementation with code to handle the error appropriately.
-            // fatalError() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development.
-            let nsError = error as NSError
-            fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
-        }
-        return result
-    }()
-
+    
     let container: NSPersistentContainer
-
+    
     init(inMemory: Bool = false) {
         container = NSPersistentContainer(name: "Report_Manager")
+        
         if inMemory {
             container.persistentStoreDescriptions.first!.url = URL(fileURLWithPath: "/dev/null")
         }
-        container.loadPersistentStores(completionHandler: { (storeDescription, error) in
-            if let error = error as NSError? {
-                // Replace this implementation with code to handle the error appropriately.
-                // fatalError() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development.
-
-                /*
-                 Typical reasons for an error here include:
-                 * The parent directory does not exist, cannot be created, or disallows writing.
-                 * The persistent store is not accessible, due to permissions or data protection when the device is locked.
-                 * The device is out of space.
-                 * The store could not be migrated to the current model version.
-                 Check the error message to determine what the actual problem was.
-                 */
-                fatalError("Unresolved error \(error), \(error.userInfo)")
+        
+        container.loadPersistentStores { description, error in
+            if let error = error {
+                fatalError("Error: \(error.localizedDescription)")
             }
-        })
+        }
         container.viewContext.automaticallyMergesChangesFromParent = true
+    }
+    
+    // MARK: - User Management
+    func saveUser(_ user: User) {
+        let context = container.viewContext
+        
+        let fetchRequest: NSFetchRequest<UserEntity> = UserEntity.fetchRequest()
+        
+        do {
+            let existingUsers = try context.fetch(fetchRequest)
+            existingUsers.forEach { context.delete($0) }
+            
+            let userEntity = UserEntity(context: context)
+            userEntity.user_id = user.id
+            userEntity.user_email = user.email
+            userEntity.user_name = user.name
+            userEntity.photo_url = user.photoURL?.absoluteString
+            
+            try context.save()
+        } catch {
+            print("Error saving user to Core Data: \(error)")
+        }
+    }
+    
+    func getUser() -> User? {
+        let context = container.viewContext
+        let fetchRequest: NSFetchRequest<UserEntity> = UserEntity.fetchRequest()
+        
+        do {
+            let userEntities = try context.fetch(fetchRequest)
+            guard let userEntity = userEntities.first else { return nil }
+            
+            return User(
+                id: userEntity.user_id ?? "",
+                email: userEntity.user_email ?? "",
+                name: userEntity.user_name ?? "",
+                photoURL: URL(string: userEntity.photo_url ?? "")
+            )
+        } catch {
+            print("Error fetching user from Core Data: \(error)")
+            return nil
+        }
+    }
+    
+    func deleteUser() {
+        let context = container.viewContext
+        let fetchRequest: NSFetchRequest<UserEntity> = UserEntity.fetchRequest()
+        
+        do {
+            let users = try context.fetch(fetchRequest)
+            users.forEach { context.delete($0) }
+            try context.save()
+        } catch {
+            print("Error deleting user from Core Data: \(error)")
+        }
     }
 }
