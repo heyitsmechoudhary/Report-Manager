@@ -5,16 +5,17 @@
 //  Created by Rahul choudhary on 21/06/25.
 //
 
+// Services/AuthenticationService.swift
+
 import FirebaseAuth
 import GoogleSignIn
-import UIKit
 import FirebaseCore
 
 class AuthenticationService {
-    private let auth = Auth.auth()
-    
-    func signInWithGoogle(completion: @escaping (Result<User, Error>) -> Void) {
-        guard let clientID = FirebaseApp.app()?.options.clientID else { return }
+    func signInWithGoogle() async throws -> User {
+        guard let clientID = FirebaseApp.app()?.options.clientID else {
+            throw AuthError.clientIDNotFound
+        }
         
         let config = GIDConfiguration(clientID: clientID)
         GIDSignIn.sharedInstance.configuration = config
@@ -22,45 +23,38 @@ class AuthenticationService {
         guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
               let window = windowScene.windows.first,
               let rootViewController = window.rootViewController else {
-            return
+            throw AuthError.presentationContextMissing
         }
         
-        GIDSignIn.sharedInstance.signIn(withPresenting: rootViewController) { [weak self] result, error in
-            if let error = error {
-                completion(.failure(error))
-                return
-            }
-            
-            guard let user = result?.user,
-                  let idToken = user.idToken?.tokenString else {
-                completion(.failure(NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to get ID token"])))
-                return
-            }
-            
-            let credential = GoogleAuthProvider.credential(withIDToken: idToken,
-                                                         accessToken: user.accessToken.tokenString)
-            
-            self?.auth.signIn(with: credential) { authResult, error in
-                if let error = error {
-                    completion(.failure(error))
-                    return
-                }
-                
-                if let firebaseUser = authResult?.user {
-                    let user = User(
-                        id: firebaseUser.uid,
-                        email: firebaseUser.email ?? "",
-                        name: firebaseUser.displayName ?? "",
-                        photoURL: firebaseUser.photoURL
-                    )
-                    completion(.success(user))
-                }
-            }
+        let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: rootViewController)
+        
+        guard let idToken = result.user.idToken?.tokenString else {
+            throw AuthError.tokenMissing
         }
+        
+        let credential = GoogleAuthProvider.credential(
+            withIDToken: idToken,
+            accessToken: result.user.accessToken.tokenString
+        )
+        
+        let authResult = try await Auth.auth().signIn(with: credential)
+        
+        return User(
+            id: authResult.user.uid,
+            email: authResult.user.email ?? "",
+            name: authResult.user.displayName ?? "",
+            photoURL: authResult.user.photoURL
+        )
     }
     
     func signOut() throws {
-        try auth.signOut()
+        try Auth.auth().signOut()
         GIDSignIn.sharedInstance.signOut()
     }
+}
+
+enum AuthError: Error {
+    case clientIDNotFound
+    case presentationContextMissing
+    case tokenMissing
 }
