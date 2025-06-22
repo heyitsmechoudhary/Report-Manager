@@ -6,16 +6,16 @@
 //
 
 // ContentView.swift
+
 import SwiftUI
 
 struct ContentView: View {
-    @StateObject private var authViewModel = AuthenticationViewModel()
+    @EnvironmentObject var authViewModel: AuthenticationViewModel
     
     var body: some View {
         Group {
             if authViewModel.isAuthenticated {
                 MainView()
-                    .environmentObject(authViewModel)
             } else {
                 SignInView()
             }
@@ -33,12 +33,20 @@ struct MainView: View {
                     Text("Welcome, \(authViewModel.currentUser?.name ?? "")")
                 }
                 
-                Section("Reports") {
+                Section("Features") {
                     NavigationLink(destination: PDFViewerView()) {
                         HStack {
                             Image(systemName: "doc.text.fill")
                                 .foregroundColor(.blue)
                             Text("Balance Sheet")
+                        }
+                    }
+                    
+                    NavigationLink(destination: ImagePickerView()) {
+                        HStack {
+                            Image(systemName: "camera.fill")
+                                .foregroundColor(.green)
+                            Text("Image Capture")
                         }
                     }
                 }
@@ -59,5 +67,13 @@ struct MainView: View {
             .navigationTitle("Dashboard")
             .listStyle(InsetGroupedListStyle())
         }
+    }
+}
+
+// Preview provider
+struct ContentView_Previews: PreviewProvider {
+    static var previews: some View {
+        ContentView()
+            .environmentObject(AuthenticationViewModel.shared)
     }
 }
