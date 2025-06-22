@@ -49,6 +49,14 @@ struct MainView: View {
                             Text("Image Capture")
                         }
                     }
+                    
+                    NavigationLink(destination: APIObjectListView()) {
+                        HStack {
+                            Image(systemName: "list.bullet.rectangle")
+                                .foregroundColor(.purple)
+                            Text("API Objects")
+                        }
+                    }
                 }
                 
                 Section {
