@@ -15,7 +15,14 @@ struct Report_ManagerApp: App {
     @StateObject private var authViewModel = AuthenticationViewModel.shared
     let persistenceController = PersistenceController.shared
 
+    init() {
+        NotificationManager.shared.requestAuthorization()
+    }
+
+    
     var body: some Scene {
+        
+        
         WindowGroup {
             ContentView()
                 .environment(\.managedObjectContext, persistenceController.container.viewContext)

@@ -57,6 +57,13 @@ struct MainView: View {
                             Text("API Objects")
                         }
                     }
+                    NavigationLink(destination: SettingsView()) {
+                        HStack {
+                            Image(systemName: "gear")
+                                .foregroundColor(.red)
+                            Text("Settings")
+                        }
+                    }
                 }
                 
                 Section {
